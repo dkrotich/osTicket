@@ -214,15 +214,16 @@ class Bootstrap {
         $hosts = explode(',', DBHOST);
         foreach ($hosts as $host) {
             $ferror  = null;
-            if (!db_connect($host, DBUSER, DBPASS, $options)) {
-                $ferror = sprintf('Unable to connect to the database — %s',
-                        db_connect_error());
-            }elseif(!db_select_database(DBNAME)) {
-                $ferror = sprintf('Unknown or invalid database: %s',
-                        DBNAME);
-           }
-           // break if no error
-           if (!$ferror) break;
+            try {
+                if (!db_connect($host, DBUSER, DBPASS, $options))
+                    $ferror = sprintf('Unable to connect to the database — %s', db_connect_error());
+                elseif (!db_select_database(DBNAME))
+                    $ferror = sprintf('Unknown or invalid database: %s', DBNAME);
+            } catch (mysqli_sql_exception $e) {
+                $ferror = sprintf('Database error — %s', $e->getMessage());
+            }
+            // break if no error
+            if (!$ferror) break;
         }
 
         if ($ferror) //Fatal error
@@ -341,7 +342,7 @@ class Bootstrap {
     static function croak($message) {
         $msg = $message."\n\n".THISPAGE;
         osTicket\Mail\Mailer::sendmail(ADMIN_EMAIL, 'osTicket Fatal Error', $msg,
-            sprintf('"osTicket Alerts"<%s>', ADMIN_EMAIL));
+            sprintf('"osTicket Alerts" <%s>', ADMIN_EMAIL));
         //Display generic error to the user
         Http::response(500, "<b>Fatal Error:</b> Contact system administrator.");
     }
